@@ -13,7 +13,7 @@ CREATE TABLE orders (
   user_id INT NOT NULL REFERENCES users (id),
   number VARCHAR UNIQUE NOT NULL,
   status VARCHAR(10) NOT NULL,
-  accrual INT,
+  accrual FLOAT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -28,7 +28,7 @@ CREATE TABLE withdrawals (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users (id),
   number VARCHAR UNIQUE NOT NULL,
-  sum INT NOT NULL,
+  sum FLOAT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 COMMENT ON COLUMN withdrawals.user_id IS 'Id пользователя списания баллов';
@@ -38,8 +38,8 @@ COMMENT ON COLUMN withdrawals.created_at IS 'Timestamp создания запи
 
 CREATE TABLE balances (
   user_id INT NOT NULL UNIQUE REFERENCES users (id),
-  current INT NOT NULL DEFAULT 0,
-  withdrawn INT NOT NULL DEFAULT 0
+  current FLOAT NOT NULL DEFAULT 0,
+  withdrawn FLOAT NOT NULL DEFAULT 0
 );
 COMMENT ON COLUMN balances.user_id IS 'Id пользователя баланса';
 COMMENT ON COLUMN balances.current IS 'Текущий баланс (сумма баллов) пользователя';

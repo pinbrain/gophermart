@@ -12,4 +12,4 @@ run: build
 	@./cmd/gophermart/gophermart
 
 migration_down:
-	@goose -dir internal/storage/migrations postgres "host=192.168.1.27 port=5412 user=gophermart password=gophermart dbname=gophermart sslmode=disable" down
+	@goose -dir internal/storage/migrations postgres "host=192.168.0.27 port=5412 user=gophermart password=gophermart dbname=gophermart sslmode=disable" down

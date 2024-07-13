@@ -38,7 +38,7 @@ type Order struct {
 	UserID    int         `json:"-"`
 	Number    string      `json:"number"`
 	Status    OrderStatus `json:"status"`
-	Accrual   int         `json:"accrual,omitempty"`
+	Accrual   float64     `json:"accrual,omitempty"`
 	CreatedAt time.Time   `json:"uploaded_at"`
 	UpdatedAt time.Time   `json:"-"`
 }
@@ -62,7 +62,7 @@ type Withdrawn struct {
 	ID        int       `json:"-"`
 	UserID    int       `json:"-"`
 	Number    string    `json:"order"`
-	Sum       int       `json:"sum"`
+	Sum       float64   `json:"sum"`
 	CreatedAt time.Time `json:"processed_at"`
 }
 
@@ -82,7 +82,7 @@ func (w Withdrawn) MarshalJSON() ([]byte, error) {
 
 // Текущий баланс пользователя
 type Balance struct {
-	UserID    int `json:"-"`
-	Current   int `json:"current"`
-	Withdrawn int `json:"withdrawn"`
+	UserID    int     `json:"-"`
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
 }

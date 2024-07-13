@@ -26,7 +26,7 @@ type Storage interface {
 	CreateOrder(ctx context.Context, userID int, orderNum string) (int, error)
 	GetUserOrders(ctx context.Context, userID int) ([]model.Order, error)
 	GetUserBalance(ctx context.Context, userID int) (*model.Balance, error)
-	Withdraw(ctx context.Context, userID int, sum int, order string) error
+	Withdraw(ctx context.Context, userID int, sum float64, order string) error
 	GetWithdrawals(ctx context.Context, userID int) ([]model.Withdrawn, error)
 	Close()
 }

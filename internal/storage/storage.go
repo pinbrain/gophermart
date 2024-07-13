@@ -206,7 +206,7 @@ func (st *DBStorage) GetUserBalance(ctx context.Context, userID int) (*model.Bal
 	return &balance, nil
 }
 
-func (st *DBStorage) Withdraw(ctx context.Context, userID int, sum int, order string) error {
+func (st *DBStorage) Withdraw(ctx context.Context, userID int, sum float64, order string) error {
 	tx, err := st.db.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to withdraw: %w", err)
@@ -217,7 +217,7 @@ func (st *DBStorage) Withdraw(ctx context.Context, userID int, sum int, order st
 		SELECT current FROM balances WHERE user_id = $1 FOR UPDATE;`,
 		userID,
 	)
-	var current int
+	var current float64
 	if err := row.Scan(&current); err != nil {
 		return fmt.Errorf("failed to withdraw: %w", err)
 	}
