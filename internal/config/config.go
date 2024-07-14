@@ -50,7 +50,7 @@ func loadFlags(cfg *ServerConf) error {
 func loadEnvs(cfg *ServerConf) error {
 	err := godotenv.Load()
 	if err != nil {
-		return err
+		return nil
 	}
 	err = env.Parse(cfg)
 	if err != nil {
