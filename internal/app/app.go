@@ -95,7 +95,7 @@ func Run() error {
 	g.Go(func() error {
 		defer logger.Log.Info("Service has been shutdown")
 		<-ctx.Done()
-		logger.Log.Info("Gracefully stopping service...")
+		logger.Log.Info("Gracefully shutting down service...")
 
 		shutdownTimeoutCtx, cancelShutdownTimeoutCtx := context.WithTimeout(context.Background(), timeoutServerShutdown)
 		defer cancelShutdownTimeoutCtx()
