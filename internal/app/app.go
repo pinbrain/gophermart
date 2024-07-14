@@ -75,7 +75,8 @@ func Run() error {
 	}).Info("Starting server")
 
 	srv := &http.Server{
-		Addr:    serverConf.ServerAddress,
+		// Addr:    serverConf.ServerAddress,
+		Addr:    ":8080",
 		Handler: router,
 	}
 
