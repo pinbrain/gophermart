@@ -86,3 +86,10 @@ type Balance struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 }
+
+// Ответ от сервиса accrual
+type AccrualResultRes struct {
+	Order   string             `json:"order"`
+	Status  OrderAccrualStatus `json:"status"`
+	Accrual float64            `json:"accrual"`
+}

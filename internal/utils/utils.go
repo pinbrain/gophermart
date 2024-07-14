@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"unicode"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pinbrain/gophermart/internal/model"
@@ -67,4 +68,28 @@ func GetJWTClaims(tokenString string) (*JWTClaims, error) {
 		return nil, errors.New("invalid jwt token")
 	}
 	return claims, nil
+}
+
+func IsValidOrderNum(orderNumber string) bool {
+	var sum int
+	double := false
+
+	for i := len(orderNumber) - 1; i >= 0; i-- {
+		r := rune(orderNumber[i])
+		if !unicode.IsDigit(r) {
+			return false
+		}
+
+		digit := int(r - '0')
+		if double {
+			digit *= 2
+			if digit > 9 {
+				digit -= 9
+			}
+		}
+		sum += digit
+		double = !double
+	}
+
+	return sum%10 == 0
 }

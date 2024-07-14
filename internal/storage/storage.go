@@ -287,5 +287,85 @@ func (st *DBStorage) GetWithdrawals(ctx context.Context, userID int) ([]model.Wi
 	}
 
 	return withdrawals, nil
+}
 
+func (st *DBStorage) GetOrdersToProcess(ctx context.Context) ([]model.Order, error) {
+	orders := []model.Order{}
+	rows, err := st.db.pool.Query(ctx, `
+		SELECT
+			id,
+			user_id,
+			number,
+			status,
+			COALESCE(accrual, 0),
+			created_at,
+			updated_at
+		FROM orders WHERE status IN ($1, $2)`,
+		model.ORDER_NEW, model.ORDER_PROCESSING,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to select orders for processing: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var order model.Order
+		if err = rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.Number,
+			&order.Status,
+			&order.Accrual,
+			&order.CreatedAt,
+			&order.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to read data from db order row: %w", err)
+		}
+		orders = append(orders, order)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to select orders for processing: %w", err)
+	}
+
+	return orders, nil
+}
+
+func (st *DBStorage) UpdateOrderStatus(ctx context.Context, orderID int, status model.OrderStatus, accrual float64) error {
+	tx, err := st.db.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to withdraw: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	row := tx.QueryRow(ctx, `
+		SELECT user_id FROM orders WHERE id = $1;`,
+		orderID,
+	)
+	var userID int
+	if err := row.Scan(&userID); err != nil {
+		return fmt.Errorf("there is no order with id = %d: %w", orderID, err)
+	}
+
+	var accrualToUpdate *float64
+	if accrual > 0 {
+		accrualToUpdate = &accrual
+		_, err = tx.Exec(ctx, `UPDATE balances SET current = current + $1 WHERE user_id = $2`,
+			accrual, userID,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update order status: %w", err)
+		}
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE orders SET status = $1, accrual = $2, updated_at = NOW() WHERE id = $3`,
+		status, accrualToUpdate, orderID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
+	return nil
 }

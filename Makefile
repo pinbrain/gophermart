@@ -1,5 +1,5 @@
 accural:
-	@./cmd/accrual/accrual_linux_amd64 -a=:8081
+	@./cmd/accrual/accrual_linux_amd64 -a=:8081 -d=postgresql://gophermart:gophermart@192.168.0.27:5412/gophermart
 
 gophermart:
 	@./cmd/gophermart/gophermart

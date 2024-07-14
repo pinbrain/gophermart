@@ -134,7 +134,10 @@ func (h *UserHandler) CreateNewOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	orderNum := string(body)
-	// TODO: проверить валидность формата номера заказа и если ошибка, то вернуть 422
+	if !utils.IsValidOrderNum(orderNum) {
+		http.Error(w, "Некорректный номер заказа", http.StatusUnprocessableEntity)
+		return
+	}
 	user := appctx.GetCtxUser(r.Context())
 	_, err = h.storage.CreateOrder(r.Context(), user.ID, orderNum)
 	if err != nil {
@@ -204,8 +207,8 @@ func (h *UserHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	// TODO: реализовать вызов проверки корректности формата номера заказа
-	if reqWithdraw.Number == "" {
+
+	if reqWithdraw.Number == "" || !utils.IsValidOrderNum(reqWithdraw.Number) {
 		http.Error(w, "Некорректный номер заказа", http.StatusUnprocessableEntity)
 		return
 	}
