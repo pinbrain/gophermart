@@ -31,7 +31,6 @@ func Run() error {
 	defer cancelCtx()
 
 	g, ctx := errgroup.WithContext(rootCtx)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ context created")
 
 	// нештатное завершение программы по таймауту
 	// происходит, если после завершения контекста
@@ -48,25 +47,21 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ config initialized")
 
 	if err = logger.Initialize(serverConf.LogLevel); err != nil {
 		return err
 	}
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ logger initialized")
 
 	storage, err := storage.NewStorage(ctx, storage.StorageCfg{DSN: serverConf.DSN})
 	if err != nil {
 		return err
 	}
 	defer storage.Close()
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ storage initialized")
 
 	var accAgentWG sync.WaitGroup
 	accAgentCtx, accAgentCancel := context.WithCancel(context.Background())
 	accrualAgent := agent.NewAccrualAgent(accAgentCtx, storage, serverConf.AccrualAddress)
 	go accrualAgent.StartAgent(&accAgentWG)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ accrual agent started")
 
 	router := handlers.NewRouter(storage)
 	logger.Log.WithFields(logrus.Fields{
@@ -75,8 +70,7 @@ func Run() error {
 	}).Info("Starting server")
 
 	srv := &http.Server{
-		// Addr:    serverConf.ServerAddress,
-		Addr:    ":8080",
+		Addr:    serverConf.ServerAddress,
 		Handler: router,
 	}
 

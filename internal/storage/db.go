@@ -21,7 +21,6 @@ func newDB(ctx context.Context, dsn string) (*DB, error) {
 		return nil, err
 	}
 	pool, err := initPool(ctx, dsn)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ db pool opened")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize a db connection: %w", err)
 	}
@@ -44,15 +43,11 @@ func initPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 }
 
 func runMigrations(dsn string) error {
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ going to run migrations")
 	goose.SetBaseFS(migrations.FS)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ migration SetBaseFS done")
 	goose.SetLogger(logger.Log)
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ migration SetLogger done")
 	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ migration SetDialect done")
 	sqlDB, err := goose.OpenDBWithDriver("postgres", dsn)
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
@@ -60,13 +55,11 @@ func runMigrations(dsn string) error {
 		}
 
 	}()
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ migration connection opened")
 	if err != nil {
 		return err
 	}
 	if err := goose.Up(sqlDB, "."); err != nil {
 		return err
 	}
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ migration done")
 	return nil
 }
