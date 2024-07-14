@@ -24,7 +24,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.21.1
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/crypto v0.21.0
+	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.14.0 // indirect
 )
