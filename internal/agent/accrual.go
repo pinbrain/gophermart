@@ -78,7 +78,7 @@ func (aa *AccrualAgent) fetchOrderStatus(ctx context.Context, orderNum string) (
 		logger.Log.WithField("orderNum", orderNum).Infoln("Order is not registered in accrual system")
 		return &model.AccrualResultRes{
 			Order:  orderNum,
-			Status: model.ORDER_ACC_INVALID,
+			Status: model.OrderAccInvalid,
 		}, nil
 	}
 
@@ -134,12 +134,12 @@ func (aa *AccrualAgent) worker(ctx context.Context, id int, ordersCh <-chan mode
 				}
 				continue
 			}
-			orderStatus := model.ORDER_PROCESSING
+			orderStatus := model.OrderProcessing
 			switch result.Status {
-			case model.ORDER_ACC_PROCESSED:
-				orderStatus = model.ORDER_PROCESSED
-			case model.ORDER_ACC_INVALID:
-				orderStatus = model.ORDER_INVALID
+			case model.OrderAccProcessed:
+				orderStatus = model.OrderProcessed
+			case model.OrderAccInvalid:
+				orderStatus = model.OrderInvalid
 			}
 			if err := aa.storage.UpdateOrderStatus(ctx, order.ID, orderStatus, result.Accrual); err != nil {
 				workerLogger.WithError(err).Error("error updating order process status")

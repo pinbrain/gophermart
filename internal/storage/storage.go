@@ -101,7 +101,7 @@ func (st *DBStorage) GetUserByLogin(ctx context.Context, login string) (*model.U
 func (st *DBStorage) CreateOrder(ctx context.Context, userID int, orderNum string) (int, error) {
 	row := st.db.pool.QueryRow(ctx, `
 		INSERT INTO orders (user_id, number, status) VALUES ($1, $2, $3) RETURNING id`,
-		userID, orderNum, model.ORDER_NEW,
+		userID, orderNum, model.OrderNew,
 	)
 	var orderID int
 	err := row.Scan(&orderID)
@@ -301,7 +301,7 @@ func (st *DBStorage) GetOrdersToProcess(ctx context.Context) ([]model.Order, err
 			created_at,
 			updated_at
 		FROM orders WHERE status IN ($1, $2)`,
-		model.ORDER_NEW, model.ORDER_PROCESSING,
+		model.OrderNew, model.OrderProcessing,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to select orders for processing: %w", err)

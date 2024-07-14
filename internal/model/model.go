@@ -9,20 +9,20 @@ type OrderAccrualStatus string
 
 // Возможные статусы обработки заказов в части начисления бонусных баллов
 const (
-	ORDER_ACC_REGISTERED OrderAccrualStatus = "REGISTERED"
-	ORDER_ACC_PROCESSING OrderAccrualStatus = "PROCESSING"
-	ORDER_ACC_INVALID    OrderAccrualStatus = "INVALID"
-	ORDER_ACC_PROCESSED  OrderAccrualStatus = "PROCESSED"
+	OrderAccRegistered OrderAccrualStatus = "REGISTERED"
+	OrderAccProcessing OrderAccrualStatus = "PROCESSING"
+	OrderAccInvalid    OrderAccrualStatus = "INVALID"
+	OrderAccProcessed  OrderAccrualStatus = "PROCESSED"
 )
 
 type OrderStatus string
 
 // Возможные статусы обработки заказов в системе (внутренние)
 const (
-	ORDER_NEW        OrderStatus = "NEW"
-	ORDER_PROCESSING OrderStatus = "PROCESSING"
-	ORDER_INVALID    OrderStatus = "INVALID"
-	ORDER_PROCESSED  OrderStatus = "PROCESSED"
+	OrderNew        OrderStatus = "NEW"
+	OrderProcessing OrderStatus = "PROCESSING"
+	OrderInvalid    OrderStatus = "INVALID"
+	OrderProcessed  OrderStatus = "PROCESSED"
 )
 
 type User struct {
