@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/pinbrain/gophermart/internal/agent"
@@ -58,10 +57,8 @@ func Run() error {
 	}
 	defer storage.Close()
 
-	var accAgentWG sync.WaitGroup
-	accAgentCtx, accAgentCancel := context.WithCancel(context.Background())
-	accrualAgent := agent.NewAccrualAgent(accAgentCtx, storage, serverConf.AccrualAddress)
-	go accrualAgent.StartAgent(&accAgentWG)
+	accrualAgent := agent.NewAccrualAgent(storage, serverConf.AccrualAddress)
+	accrualAgent.StartAgent()
 
 	router := handlers.NewRouter(storage)
 	logger.Log.WithFields(logrus.Fields{
@@ -104,8 +101,7 @@ func Run() error {
 		}
 		logger.Log.Info("HTTP server stopped")
 
-		accAgentCancel()
-		accAgentWG.Wait()
+		accrualAgent.StopAgent()
 		logger.Log.Info("Accrual agent stopped")
 
 		storage.Close()

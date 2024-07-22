@@ -29,20 +29,24 @@ type Storage interface {
 }
 
 type AccrualAgent struct {
-	appCtx     context.Context
 	storage    Storage
 	accrualURL string
+
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	ordersCh  chan model.Order
+	wg        sync.WaitGroup
 
 	rateLimit        sync.RWMutex
 	rateLimitEndTime time.Time
 }
 
-func NewAccrualAgent(ctx context.Context, storage Storage, accrualURL string) AccrualAgent {
-	return AccrualAgent{
-		appCtx:     ctx,
+func NewAccrualAgent(storage Storage, accrualURL string) *AccrualAgent {
+	return &AccrualAgent{
 		storage:    storage,
 		accrualURL: accrualURL,
 
+		wg:               sync.WaitGroup{},
 		rateLimit:        sync.RWMutex{},
 		rateLimitEndTime: time.Time{},
 	}
@@ -97,11 +101,11 @@ func (aa *AccrualAgent) fetchOrderStatus(ctx context.Context, orderNum string) (
 	return &result, nil
 }
 
-func (aa *AccrualAgent) worker(ctx context.Context, id int, ordersCh <-chan model.Order) {
+func (aa *AccrualAgent) worker(id int, ordersCh <-chan model.Order) {
 	workerLogger := logger.Log.WithField("workerID", id)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-aa.ctx.Done():
 			workerLogger.Debug("Worker stopped")
 			return
 		case order, ok := <-ordersCh:
@@ -109,61 +113,65 @@ func (aa *AccrualAgent) worker(ctx context.Context, id int, ordersCh <-chan mode
 				return
 			}
 			workerLogger.Debugf("going to process order #%s", order.Number)
+			for {
+				aa.rateLimit.RLock()
+				sleepDuration := time.Until(aa.rateLimitEndTime)
+				aa.rateLimit.RUnlock()
 
-			aa.rateLimit.RLock()
-			sleepDuration := time.Until(aa.rateLimitEndTime)
-			aa.rateLimit.RUnlock()
-
-			if sleepDuration > 0 {
-				workerLogger.Debugf("Rate limited, sleeping for %s", sleepDuration)
-				// Пока горутина ждет таймаут может прийти сигнал о завершении работы, на который нужно среагировать
-				select {
-				case <-ctx.Done():
-					workerLogger.Debug("Worker stopped from sleeping state")
-					return
-				case <-time.After(sleepDuration):
+				if sleepDuration > 0 {
+					workerLogger.Debugf("Rate limited, sleeping for %s", sleepDuration)
+					// Пока горутина ждет таймаут может прийти сигнал о завершении работы, на который нужно среагировать
+					select {
+					case <-aa.ctx.Done():
+						workerLogger.Debug("Worker stopped from sleeping state")
+						return
+					case <-time.After(sleepDuration):
+					}
 				}
-			}
-
-			result, err := aa.fetchOrderStatus(ctx, order.Number)
-			if err != nil {
-				if errors.Is(err, ErrReqLimit) {
-					workerLogger.Info("Accrual service request limit reached")
-				} else {
-					workerLogger.WithError(err).Error("error fetching order status")
+				workerLogger.Debugf("fetching order #%s", order.Number)
+				result, err := aa.fetchOrderStatus(aa.ctx, order.Number)
+				if err != nil {
+					if errors.Is(err, ErrReqLimit) {
+						workerLogger.Info("Accrual service request limit reached")
+						continue
+					} else {
+						workerLogger.WithError(err).Error("error fetching order status")
+						break
+					}
 				}
-				continue
-			}
-			orderStatus := model.OrderProcessing
-			switch result.Status {
-			case model.OrderAccProcessed:
-				orderStatus = model.OrderProcessed
-			case model.OrderAccInvalid:
-				orderStatus = model.OrderInvalid
-			}
-			if err := aa.storage.UpdateOrderStatus(ctx, order.ID, orderStatus, result.Accrual); err != nil {
-				workerLogger.WithError(err).Error("error updating order process status")
+				orderStatus := model.OrderProcessing
+				switch result.Status {
+				case model.OrderAccProcessed:
+					orderStatus = model.OrderProcessed
+				case model.OrderAccInvalid:
+					orderStatus = model.OrderInvalid
+				}
+				if err := aa.storage.UpdateOrderStatus(aa.ctx, order.ID, orderStatus, result.Accrual); err != nil {
+					workerLogger.WithError(err).Error("error updating order process status")
+				}
+				break
 			}
 		}
 	}
 }
 
-func (aa *AccrualAgent) processOrders(ctx context.Context, ordersCh chan<- model.Order, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (aa *AccrualAgent) processOrders(ordersCh chan<- model.Order) {
+	defer aa.wg.Done()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-aa.ctx.Done():
 			logger.Log.Debug("Process order stopped")
 			return
 		case <-time.After(checkInterval):
-			orders, err := aa.storage.GetOrdersToProcess(aa.appCtx)
+			orders, err := aa.storage.GetOrdersToProcess(aa.ctx)
 			if err != nil {
 				logger.Log.WithError(err).Error("failed to get orders to process from storage")
 				continue
 			}
 			for _, order := range orders {
 				select {
-				case <-aa.appCtx.Done():
+				case <-aa.ctx.Done():
+					logger.Log.Debug("Process order stopped (while adding orders to chanel)")
 					return
 				case ordersCh <- order:
 				}
@@ -172,25 +180,31 @@ func (aa *AccrualAgent) processOrders(ctx context.Context, ordersCh chan<- model
 	}
 }
 
-func (aa *AccrualAgent) StartAgent(wg *sync.WaitGroup) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func (aa *AccrualAgent) StartAgent() {
+	aa.ctx, aa.ctxCancel = context.WithCancel(context.Background())
 
-	ordersCh := make(chan model.Order, workerCount)
+	aa.ordersCh = make(chan model.Order, workerCount)
 
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
+		aa.wg.Add(1)
 		go func(id int) {
-			defer wg.Done()
-			aa.worker(ctx, id, ordersCh)
+			defer aa.wg.Done()
+			aa.worker(id, aa.ordersCh)
 		}(i)
 	}
 
-	wg.Add(1)
-	go aa.processOrders(ctx, ordersCh, wg)
+	aa.wg.Add(1)
+	go aa.processOrders(aa.ordersCh)
+}
 
-	<-aa.appCtx.Done()
+func (aa *AccrualAgent) StopAgent() {
+	// Если агент уже завершил работу, то ничего не делаем
+	if err := aa.ctx.Err(); err != nil {
+		logger.Log.Debug("Accrual agent already stopped")
+		return
+	}
 	logger.Log.Debug("Stopping accrual agent workers...")
-	cancel()
-	close(ordersCh)
+	aa.ctxCancel()
+	close(aa.ordersCh)
+	aa.wg.Wait()
 }
